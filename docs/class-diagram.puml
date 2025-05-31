@@ -1,0 +1,111 @@
+@startuml
+package "Shared" {
+    class SnakeCasePhysicalNamingStrategy {
+        +toPhysicalCatalogName(identifier: Identifier, jdbcEnvironment: JdbcEnvironment): Identifier
+        +toPhysicalSchemaName(identifier: Identifier, jdbcEnvironment: JdbcEnvironment): Identifier
+        +toPhysicalTableName(identifier: Identifier, jdbcEnvironment: JdbcEnvironment): Identifier
+        +toPhysicalSequenceName(identifier: Identifier, jdbcEnvironment: JdbcEnvironment): Identifier
+        +toPhysicalColumnName(identifier: Identifier, jdbcEnvironment: JdbcEnvironment): Identifier
+
+        -toSnakeCase(identifier: Identifier): Identifier
+        -toPlural(identifier: Identifier): Identifier
+    }
+}
+
+package "News" {
+    class FavoriteSource <<Aggregate Root>> {
+        - id: long
+        - newsApiKey: String
+        - SourceId: String
+        - createdAt: Date
+        - updatedAt: Date
+    }
+
+
+    class CreateFavoriteSourceCommand <<Record>> {
+        - id: long
+        - newsApiKey: String
+    }
+
+    class GetAllFavoriteSourcesByNewsApiKeyQuery <<Record>> {
+        - newsApiKey: String
+        +GetAllFavoriteSourcesByNewsApiKeyQuery(newsApiKey: String)
+    }
+
+    class GetFavoriteSourceByIdQuery <<Record>> {
+        - id: long
+        +GetFavoriteSourceByIdQuery(id: Long)
+    }
+
+    class GetFavoriteSourceByNewsApiKeyAndSourceIdQuery <<Record>> {
+        - newsApiKey: String
+        - SourceId: String
+        +GetFavoriteSourceByNewsApiKeyAndSourceIdQuery(newsApiKey: String, SourceId: String)
+    }
+
+    interface FavoriteSourceCommandService <<Interface>> {
+        +handle(command: CreateFavoriteSourceCommand): Optional<FavoriteSource>
+    }
+
+    interface FavoriteSourceQueryService <<Interface>> {
+        +handle(query: GetAllFavoriteSourcesByNewsApiKeyQuery): Optional<FavoriteSource>
+        +handle(query: GetFavoriteSourceByIdQuery): Optional<FavoriteSource>
+        +handle(query: GetFavoriteSourceByNewsApiKeyAndSourceIdQuery): Optional<FavoriteSource>
+    }
+
+    interface FavoriteSourceRepository <<Interface>> {
+        +findAllByNewsApiKey(String: newsApiKey): List<FavoriteSource>
+        +existsByNewsApiKeyAndSourceId(String: newsApiKey, String sourceId): boolean
+        +findByNewsApiKeyAndSourceId(String: newsApiKey): Optional<FavoriteSource>
+    }
+
+    class FavoriteSourceCommandServiceImpl{
+        - favoriteSourceRepository: FavoriteSourceRepository
+    }
+
+    class FavoriteSourceQueryServiceImpl{
+        - favoriteSourceRepository: FavoriteSourceRepository
+    }
+
+    class CreateFavoriteSourceResource <<Record>> {
+        - newsApiKey: String
+        - sourceId : String
+    }
+
+    class FavoriteSourceResource <<Record>> {
+        - id: long
+        - newsApiKey: String
+        - sourceId : String
+    }
+
+    class CreateFavoriteSourceCommandFromResourceAssembler {
+    }
+
+    class FavoriteSourceResourceFromEntityAssembler {
+    }
+
+    class FavoriteSourcesController {
+        - favoriteSourceCommandService : FavoriteSourceCommandService
+        - favoriteSourceQueryService : FavoriteSourceQueryService
+
+        + createFavoriteSource(resource: CreateFavoriteSourceResource): ResponseEntity<FavoriteSourceResource>
+        + getFavoriteSourceById(id: Long): ResponseEntity<FavoriteSourceResource>
+        - getAllFavoriteSourcesByNewsApiKey(newsApiKey: String): ResponseEntity<List<FavoriteSourceResource>>
+        - getFavoriteSourceByNewsApiKeyAndSourceId(newsApiKey: String, sourceId: String): ResponseEntity<FavoriteSourceResource>
+    }
+
+FavoriteSourceCommandService --> CreateFavoriteSourceCommand : uses
+FavoriteSourceQueryService --> GetAllFavoriteSourcesByNewsApiKeyQuery : uses
+FavoriteSourceQueryService --> GetFavoriteSourceByIdQuery : uses
+FavoriteSourceQueryService --> GetFavoriteSourceByNewsApiKeyAndSourceIdQuery : uses
+CreateFavoriteSourceCommandFromResourceAssembler ..> FavoriteSourceResource : handles
+FavoriteSourceResourceFromEntityAssembler ..> FavoriteSource : handles
+FavoriteSourceCommandServiceImpl ..|> FavoriteSourceCommandService : implements
+FavoriteSourceQueryServiceImpl ..|> FavoriteSourceQueryService : implements
+FavoriteSourceRepository --* FavoriteSource : has a
+FavoriteSourcesController --* FavoriteSourceCommandService : has a
+FavoriteSourcesController --* FavoriteSourceQueryService : has a
+FavoriteSourcesController ..> CreateFavoriteSourceResource : handles
+}
+
+@enduml
